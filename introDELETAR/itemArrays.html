@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GoJS Item Arrays-- Northwoods Software</title>
+  <!-- Copyright 1998-2016 by Northwoods Software Corporation. -->
+    <script src="go.js"></script>
+  <script src="goIntro.js"></script>
+</head>
+<body onload="goIntro()">
+<div id="container" class="container-fluid">
+<div id="content">
+
+
+<pre data-language="javascript" id="alternating">
+  diagram.nodeTemplate =
+    $(go.Node, "Auto",
+      $(go.Shape, { fill: "white" }),
+      $(go.Panel, "Table",
+        new go.Binding("itemArray", "people"),
+        {
+          defaultAlignment: go.Spot.Left,
+          itemTemplate:
+            $(go.Panel, "TableRow",
+              new go.Binding("background", "row",
+                             function(i) { return i%2 === 0 ? "lightgreen" : "transparent" })
+                  .ofObject(),
+              $(go.TextBlock, new go.Binding("text", "name"),
+                { column: 0, margin: 2, font: "bold 10pt sans-serif" }),
+              $(go.TextBlock, new go.Binding("text", "phone"),
+                { column: 1, margin: 2 }),
+              $(go.TextBlock, new go.Binding("text", "loc"),
+                { column: 2, margin: 2 }),
+              $("Button",
+                {
+                  column: 3,
+                  margin: new go.Margin(0, 1, 0, 0),
+                  click: function(e, obj) {
+                    // OBJ is this Button Panel;
+                    // find the TableRow Panel containing it
+                    var itempanel = obj.panel;
+                    alert("Adding new attribute... " + itempanel.row + " for " + itempanel.data.name);
+                  }
+                },
+                $(go.Shape, "ThinCross",
+                  { desiredSize: new go.Size(6, 6) })
+              )
+            )  // end of itemTemplate
+        })
+    );
+
+  diagram.model =
+    $(go.GraphLinksModel,
+      {
+        nodeDataArray: [
+          { key: "group1",
+            people: [
+              { name: "Alice", phone: "2345", loc: "C4-E18" },
+              { name: "Bob", phone: "9876", loc: "E1-B34" },
+              { name: "Carol", phone: "1111", loc: "C4-E23" },
+              { name: "Ted", phone: "2222", loc: "C4-E197" },
+              { name: "Robert", phone: "5656", loc: "B1-A27" },
+              { name: "Natalie", phone: "5698", loc: "B1-B6" }
+            ] }
+        ]
+      }
+    );
+
+  diagram.initialContentAlignment = go.Spot.Center;
+</pre>
+<script>goCode("alternating", 450, 200)</script>
+<p>
+The "Button" Panel in the item template also demonstrates how one can get the particular row index
+as well as the data to which the item panel is bound.
+</p>
+
+<p>
+The natural way to have a distinct header for a Table Panel is to have the first row (i.e. the first item)
+hold the data for the header, but have it be styled differently.
+If you want such a behavior, you will want to use multiple templates -- see the example in <a href="templateMaps.html">Template Maps</a>.
+</p>
+<p>
+If instead you want to have a table header that is "fixed" and not dependent on item Array data,
+you can have a single "TableRow" (or "TableColumn") Panel in the "Table" Panel that is kept if <a>Panel.isPanelMain</a> is true.
+</p>
+
+
+</div>
+</div>
+</body>
+</html>

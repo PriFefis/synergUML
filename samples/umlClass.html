@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>SynergUML</title>
+<meta name="description" content="UML Diagram" />
+<meta charset="UTF-8">
+<link href="../assets/css/goSamples.css" rel="stylesheet" type="text/css" />  
+<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+<link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/jasny-bootstrap/3.1.3/css/jasny-bootstrap.min.css">
+<!-- <link href="assetsForms/css/lib/bootstrap-responsive.min.css" rel="stylesheet"/> -->
+<!-- <link href="assetsForms/css/custom.css" rel="stylesheet"/> -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
+<script src="http://cdnjs.cloudflare.com/ajax/libs/jasny-bootstrap/3.1.3/js/jasny-bootstrap.min.js"></script>
+<script src="go.js"></script>
+<script src="FileSaver.js-master/FileSaver.js"></script>
+<script src="goSamples.js"></script>  
+<script src="script.js"></script>  
+<script src="myscripts.js"></script>  
+<link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/css/toastr.min.css">
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+<script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+  
+<script id="code">
+
+  function init() {  
+    var $ = go.GraphObject.make;
+
+    myDiagram = $(go.Diagram, "myDiagramDiv",
+        {
+          initialContentAlignment: go.Spot.Center,
+          "linkingTool.isEnabled": false,  //invoked explicitly by drawLink function, below
+          "linkingTool.direction": go.LinkingTool.ForwardsOnly,  //only draw "from" towards "to"
+          "undoManager.isEnabled": true,
+
+          //comentar o layout permite add classes fora do padrão da "linha horizontal"
+          /*layout: $(go.TreeLayout,
+                    { // this only lays out in trees nodes connected by "generalization" links
+                      angle: 90,
+                      path: go.TreeLayout.PathSource,  // links go from child to parent
+                      setsPortSpot: false,  // keep Spot.AllSides for link connection spot
+                      setsChildPortSpot: false,  // keep Spot.AllSides
+                      // nodes not connected by "generalization" links are laid out horizontally
+                      arrangement: go.TreeLayout.ArrangementHorizontal
+                    }) */
+        });
+
+    var propertyTemplate =
+      $(go.Panel, "Horizontal",
+        // property visibility/access
+        $("Button", 
+            {
+              click: configAttr,
+              toolTip: 
+                $(go.Adornment, "Auto",
+                  $(go.Shape, { fill: "black" }),
+                  $(go.TextBlock, { margin: 2, stroke:"white"}, " Configurar ")
+                ) 
+            },           
+            $(go.Shape,  
+              { geometryString: "x F1 M29.181 19.070c-1.679-2.908-0.669-6.634 2.255-8.328l-3.145-5.447c-0.898 0.527-1.943 0.829-3.058 0.829-3.361 0-6.085-2.742-6.085-6.125h-6.289c0.008 1.044-0.252 2.103-0.811 3.070-1.679 2.908-5.411 3.897-8.339 2.211l-3.144 5.447c0.905 0.515 1.689 1.268 2.246 2.234 1.676 2.903 0.672 6.623-2.241 8.319l3.145 5.447c0.895-0.522 1.935-0.82 3.044-0.82 3.35 0 6.067 2.725 6.084 6.092h6.289c-0.003-1.034 0.259-2.080 0.811-3.038 1.676-2.903 5.399-3.894 8.325-2.219l3.145-5.447c-0.899-0.515-1.678-1.266-2.232-2.226zM16 22.479c-3.578 0-6.479-2.901-6.479-6.479s2.901-6.479 6.479-6.479c3.578 0 6.479 2.901 6.479 6.479s-2.901 6.479-6.479 6.479z", fill: "black"}, { width: 8, height: 8})
+        ),
+
+        // property name, underlined if scope=="class" to indicate static property
+        $(go.TextBlock,
+          { isMultiline: false, editable: true },
+          new go.Binding("text", "name").makeTwoWay(),
+          new go.Binding("isUnderline", "scope", function(s) { return s[0] === 'c' })),
+        // property type, if known
+        // $(go.TextBlock,
+        //   new go.Binding("text", "type", function(t) { return (t ? ": " : ""); })),
+        // $(go.TextBlock,
+        //   { isMultiline: false, editable: true },
+        //   new go.Binding("text", "type").makeTwoWay()),
+        // property default value, if any
+        $(go.TextBlock,
+          { isMultiline: false, editable: false },
+          new go.Binding("text", "default", function(s) { return s ? " = " + s : ""; }))
+      );
+
+    var methodTemplate =
+      $(go.Panel, "Horizontal",
+        // method visibility/access
+        $(go.TextBlock,
+          { isMultiline: false, editable: false, width: 12 },
+          new go.Binding("text", "visibility", convertVisibility)),
+        // method name, underlined if scope=="class" to indicate static method
+        $(go.TextBlock,
+          { isMultiline: false, editable: true },
+          new go.Binding("text", "name").makeTwoWay(),
+          new go.Binding("isUnderline", "scope", function(s) { return s[0] === 'c' })),
+        // method parameters
+        $(go.TextBlock, "()", { editable: true }, //se for necessário excluir os parêntesis dos métodos, exclua o '()'.
+          // this does not permit adding/editing/removing of parameters via inplace edits
+          new go.Binding("text", "parameters", function(parr) {
+              var s = "(";
+              for (var i = 0; i < parr.length; i++) {
+                var param = parr[i];
+                if (i > 0) s += ", ";
+                s += param.name + ": " + param.type;
+              }
+              return s + ")";
+          })),
+
+        // $(go.TextBlock, "",
+        //   new go.Binding("text", "type", function(t) { return (t ? ": " : ""); })),
+        // $(go.TextBlock,
+        //   { isMultiline: false, editable: true },
+        //   new go.Binding("text", "type").makeTwoWay()),
+        $(go.TextBlock,
+          { isMultiline: false, editable: false },
+          new go.Binding("text", "default", function(s) { return s ? " = " + s : ""; }))
+      );
+
+    myDiagram.nodeTemplate =
+      $(go.Node, "Auto",
+        {
+          // rearrange the link points evenly along the sides of the nodes as links are
+          // drawn or reconnected -- these event handlers only make sense when the fromSpot
+          // and toSpot are Spot.xxxSides          
+          linkConnected: function(node, link, port) {
+            if (link.fromNode !== null) 
+              link.fromNode.invalidateConnectedLinks();            
+            if (link.toNode !== null)  
+              link.toNode.invalidateConnectedLinks();          
+          },
+          linkDisconnected: function(node, link, port) {
+            if (link.fromNode !== null) 
+              link.fromNode.invalidateConnectedLinks();
+            if (link.toNode !== null) 
+              link.toNode.invalidateConnectedLinks();
+          }, 
+          locationSpot: go.Spot.Center//,
+         // fromSpot: go.Spot.AllSides,
+         // toSpot: go.Spot.AllSides
+        },
+        //new go.Binding("location", "location", go.Point.parse).makeTwoWay(go.Point.stringify),
+        $(go.Shape, 
+          { 
+            fill: "lightyellow", 
+            portId: "",
+            // use the following property if you want users to draw new links
+            // interactively by dragging from the Shape, and re-enable the LinkingTool
+            // in the initialization of the Diagram
+            //cursor: "pointer",
+            fromSpot: go.Spot.AllSides, fromLinkable: true,
+            fromLinkableDuplicates: true, fromLinkableSelfNode: true,
+            toSpot: go.Spot.AllSides, toLinkable: true,
+            toLinkableDuplicates: true, toLinkableSelfNode: false 
+          }
+        ),
+        $(go.Panel, "Table",
+          { defaultRowSeparatorStroke: "black"},
+          // header
+          $(go.TextBlock,
+            {
+              row: 0, columnSpan: 2, margin: 3, alignment: go.Spot.Center,
+              font: "bold 12pt sans-serif",
+              isMultiline: false, editable: true
+            },
+            new go.Binding("text", "name").makeTwoWay()
+          ),
+
+          // Properties
+          $(go.TextBlock, "Attributes",
+            { row: 1, font: "italic 10pt sans-serif" },
+            new go.Binding("visible", "visible", function(v) { return !v; }).ofObject("PROPERTIES")
+          ),
+          $(go.Panel, "Vertical", { name: "PROPERTIES" },
+            new go.Binding("itemArray", "properties"),
+            {
+              row: 1, margin: 3, stretch: go.GraphObject.Fill,
+              defaultAlignment: go.Spot.Left, background: "lightyellow",
+              itemTemplate: propertyTemplate
+            }
+          ),
+
+          $("Button", 
+            {
+              column: 1, row: 1, alignment: go.Spot.TopRight,
+              margin: new go.Margin(1, 1, 1, 2),
+              click: addAttribute,
+              toolTip: 
+                $(go.Adornment, "Auto",
+                  $(go.Shape, { fill: "black" }),
+                  $(go.TextBlock, { margin: 2, stroke:"white"}, "Adicionar atributo")
+                ) 
+            },           
+            $(go.Shape, "ThinCross", 
+              { desiredSize: new go.Size(6, 6) })
+          ),
+
+          $("PanelExpanderButton", "PROPERTIES",
+            { row: 1, column: 2, alignment: go.Spot.TopRight, margin: new go.Margin(2, 1, 1, 1), visible: false },
+            new go.Binding("visible", "properties", function(arr) { return true; })
+          ),
+
+          // Methods
+          $(go.TextBlock, "Methods",
+            { row: 2, font: "italic 10pt sans-serif" },
+            new go.Binding("visible", "visible", function(v) { return !v; }).ofObject("METHODS")
+          ),
+          $(go.Panel, "Vertical", { name: "METHODS" },
+            new go.Binding("itemArray", "methods"),
+            {
+              row: 2, margin: 3, stretch: go.GraphObject.Fill,
+              defaultAlignment: go.Spot.Left, background: "lightyellow",
+              itemTemplate: methodTemplate
+            }
+          ),
+
+          $("Button",
+            {
+              column: 1, row: 2, alignment: go.Spot.TopRight,
+              margin: new go.Margin(1, 1, 1, 2),
+              click: addMethod
+            },
+            $(go.Shape, "ThinCross",
+            { desiredSize: new go.Size(6, 6) })
+          ),
+
+          $("PanelExpanderButton", "METHODS",
+            { row: 2, column: 2, alignment: go.Spot.TopRight, visible: false },
+            new go.Binding("visible", "methods", function(arr) { return true }))
+        )
+      );
+
+    myDiagram.nodeTemplate.selectionAdornmentTemplate =
+      $(go.Adornment, "Spot",
+        $(go.Panel, "Auto",
+          $(go.Shape, { stroke: "dodgerblue", strokeWidth: 2, fill: null }),
+          $(go.Placeholder)
+        ),
+        $(go.Panel, "Horizontal",
+          { alignment: go.Spot.Top, alignmentFocus: go.Spot.Bottom },
+  
+          $("Button",
+            {
+              click: drawLink,  
+              _linkType: "association", 
+              actionMove: drawLink,  
+              toolTip: 
+                $(go.Adornment, "Auto",
+                  $(go.Shape, { fill: "black" }),
+                  $(go.TextBlock, { margin: 2, stroke:"white"}, "Adicionar relacionamento: associação")
+                )     
+            },
+            $(go.Shape, 
+              { geometryString: "M0 0 L8 0 8 10 14 10" }, { width: 18, height: 18})
+          ),
+
+          $("Button",
+            {
+              click: drawLink,  
+              _linkType: "generalization", 
+              actionMove: drawLink,  
+              toolTip: 
+                $(go.Adornment, "Auto",
+                  $(go.Shape, { fill: "black" }),
+                  $(go.TextBlock, { margin: 2, stroke:"white" },
+                    "Adicionar relacionamento: generalização")
+                )  
+            },
+            $(go.Shape,
+              { geometryString: "M0 0 L8 0 8 12 14 12 M12 10 L14 12 12 14"}, { width: 18, height: 18})
+          ),
+
+          $("Button",
+            {
+              click: drawLink,  
+              _linkType: "aggregation", 
+              actionMove: drawLink,  
+              toolTip: 
+                $(go.Adornment, "Auto",
+                  $(go.Shape, { fill: "black" }),
+                  $(go.TextBlock, { margin: 2, stroke:"white" },
+                    "Adicionar relacionamento: agregação")
+                )  
+            },
+            $(go.Shape, 
+              { geometryString: "M0 0 L8 0 8 12 10 12 12 10 14 12 12 14 10 12"}, { width: 18, height: 18})
+          ), 
+      
+          $("Button",
+            {
+              actionMove: dragNewNode,  
+              _dragData: { key: 6, name: "Classname", properties: [],  methods: [] },  
+              click: clickNewNode,  
+              _linkType: "association",
+              toolTip: 
+                $(go.Adornment, "Auto",
+                  $(go.Shape, { fill: "black" }),
+                  $(go.TextBlock, { margin: 2, stroke:"white" },
+                    "Adicionar relacionamento (associação) a uma nova classe.")
+                )  
+            },
+            $(go.Shape,
+              { geometryString: "M0 10 L6 10 x F1 M6 6 L14 6 14 13 6 13z M6 8 L14 8", fill: "lightyellow"}, { width: 22, height: 18})
+          ),     
+
+          $("Button",
+            {
+              actionMove: dragNewNode, 
+              _dragData: { key: 6, name: "Classname", properties: [],  methods: [] },  
+              click: clickNewNode,  
+              _linkType: "generalization" ,
+              toolTip: 
+                $(go.Adornment, "Auto",
+                  $(go.Shape, { fill: "black" }),
+                  $(go.TextBlock, { margin: 2, stroke:"white" },
+                    "Adicionar relacionamento (generalização) a uma nova classe.")
+                )  
+            },
+            $(go.Shape,
+              { geometryString: "M0 10 L5 10 3 9 M5 10 L3 11 x F1 M6 6 L14 6 14 13 6 13z M6 8 L14 8", fill: "lightyellow"}, { width: 22, height: 18})
+          ),     
+       
+          $("Button",
+            {
+              actionMove: dragNewNode,  
+              _dragData: { key: 6, name: "Classname", properties: [],  methods: [] },  
+              click: clickNewNode, 
+              _linkType: "aggregation" ,
+              toolTip: 
+                $(go.Adornment, "Auto",
+                  $(go.Shape, { fill: "black" }),
+                  $(go.TextBlock, { margin: 2, stroke:"white" },
+                    "Adicionar relacionamento (agregação) a uma nova classe.")
+                )  
+            },
+            $(go.Shape,
+              { geometryString: "M0 10 L3 10 4 9 5 10 4 11 3 10 x F1 M6 6 L14 6 14 13 6 13z M6 8 L14 8", fill: "lightyellow" }, { width: 22, height: 18})
+          ),          
+          
+          $("Button",
+            {
+              _dragData: { key: 2, name: "Classname", properties: [],  methods: [] },  
+              click: clickNewNodeWithoutLink,
+              toolTip: 
+                $(go.Adornment, "Auto",
+                  $(go.Shape, { fill: "black" }),
+                  $(go.TextBlock, { margin: 2, stroke:"white" },
+                    "Adicionar nova classe.")
+                )   
+            },
+            $(go.Shape,
+              { geometryString: "F1 M0 0 L14 0 14 14 0 14z M0 4 L14 4 M4 9 L10 9 M7 6 L7 12", fill: "lightyellow"}, { width: 18, height: 18})
+          )
+        )
+      );
+
+      // using dragNewNode also requires modifying the standard DraggingTool so that it
+      // only calls commitTransaction when dragNewNode started a "button drag" transaction;
+      // do this by overriding DraggingTool.doDeactivate:
+      var tool = myDiagram.toolManager.draggingTool;  
+      tool.doDeactivate = function() { 
+        // commit "button drag" transaction, if it is ongoing; see dragNewNode, above
+        if (tool.diagram.undoManager.nestedTransactionNames.elt(0) === "button drag") {
+          tool.diagram.commitTransaction();
+        }
+        go.DraggingTool.prototype.doDeactivate.call(tool);  // call the base method
+      };
+
+      //Função para setar dados da modal que configura o atributo
+      function configAttr (e, obj) {
+        var attrName = obj.panel.data.name; 
+        var classname = obj.part.data.name;     
+        jQuery('#modalConfig').modal();  
+        jQuery('#modalConfig .modal-title').html(classname + ": " + attrName);
+      }
+
+      function addAttribute(e, obj) {
+        var n = myDiagram.selection.first();
+          if (n === null) return;
+          var d = n.data;
+          myDiagram.startTransaction("addAttribute");
+          myDiagram.model.addArrayItem(d.properties, { name: "nameAttr", type: "type", visibility: "plus"});
+          myDiagram.commitTransaction("addAttribute");
+      }
+
+      function addMethod(e, obj) {
+        var n = myDiagram.selection.first();
+          if (n === null) return;
+          var d = n.data;
+          myDiagram.startTransaction("addMethod"); 
+          myDiagram.model.addArrayItem(d.methods, { name: "nameMeth", type: "type", visibility: "plus"});
+          myDiagram.commitTransaction("addMethod");
+      }
+
+      function drawLink(e, button) {
+        var node = button.part.adornedPart;
+        var tool = e.diagram.toolManager.linkingTool;   
+        var linktype = button._linkType;
+        tool.startObject = node.port;
+        e.diagram.currentTool = tool;
+        tool.doActivate();  
+        e.diagram.addDiagramListener("LinkDrawn", 
+          function(evt) {
+            var from = evt.subject.ge.from;
+            var to = evt.subject.ge.to;
+            var linkdata = e.diagram.model.copyLinkData({});            
+            var bla = e.diagram.model.linkDataArray;
+            for(var i in bla) {
+              if(bla[i].from==from && bla[i].to==to) {
+                e.diagram.model.setDataProperty(bla[i], "relationship", button._linkType);
+                e.diagram.model.commitTransaction("setProperty"); 
+              }
+            }
+         });       
+      }
+
+      function printObject(o) {
+        var out = '';
+        for (var p in o) {
+          out += p + ': ' + o[p] + '\n';
+        }
+        console.log(out);
+      }
+
+      function createNodeAndLink(data, fromnode, relationship) {
+        var diagram = fromnode.diagram;
+        var model = diagram.model;
+        var nodedata = model.copyNodeData(data); 
+        model.addNodeData(nodedata);
+        var newnode = diagram.findNodeForData(nodedata);
+        var linkdata = model.copyLinkData({});
+        model.setFromKeyForLinkData(linkdata, model.getKeyForNodeData(fromnode.data));
+        model.setToKeyForLinkData(linkdata, model.getKeyForNodeData(newnode.data));
+        model.setDataProperty(linkdata, "relationship", relationship);
+        model.addLinkData(linkdata);  
+        diagram.select(newnode);
+        return newnode;
+      }
+
+      function createNode(data, fromnode) {
+        var diagram = fromnode.diagram;
+        var model = diagram.model;
+        var nodedata = model.copyNodeData(data);
+        model.addNodeData(nodedata);
+        var newnode = diagram.findNodeForData(nodedata);
+        diagram.select(newnode);
+        return newnode;
+      }
+
+      function clickNewNode(e, button) { 
+        var data = button._dragData;
+        if (!data) return;
+        e.diagram.startTransaction("Create Node and Link");
+        var fromnode = button.part.adornedPart;
+        var newnode = createNodeAndLink(data, fromnode, button._linkType);
+        newnode.location = new go.Point(fromnode.location.x + 200, fromnode.location.y);
+        e.diagram.commitTransaction("Create Node and Link");
+      }
+
+      function dragNewNode(e, button) { 
+        var tool = e.diagram.toolManager.draggingTool;
+        if (tool.isBeyondDragSize()) {
+          var data = button._dragData;
+          if (!data) return;
+          e.diagram.startTransaction("button drag");  // see doDeactivate, below
+          var newnode = createNodeAndLink(data, button.part.adornedPart, button._linkType); 
+          newnode.location = e.diagram.lastInput.documentPoint;
+          // don't commitTransaction here, but in tool.doDeactivate, after drag operation finished
+          // set tool.currentPart to a selected movable Part and then activate the DraggingTool
+          tool.currentPart = newnode;
+          e.diagram.currentTool = tool;
+          tool.doActivate();
+        }
+      }
+
+    // the Button.click event handler, called when the user clicks the "N" button
+    function clickNewNodeWithoutLink(e, button) {
+      var data = button._dragData; 
+      if (!data) return;
+      e.diagram.startTransaction("Create Node");
+      var fromnode = button.part.adornedPart;
+      var newnode = createNode(button._dragData, fromnode);
+      newnode.location = new go.Point(fromnode.location.x + 200, fromnode.location.y);
+      e.diagram.commitTransaction("Create Node");
+    }
+
+    // show visibility or access as a single character at the beginning of each property or method
+    function convertVisibility(v) {
+      switch (v) {
+        case "plus": return "";
+        default: return "";
+      }
+    }
+
+    function convertIsTreeLink(r) {
+      return r === "generalization";
+    }
+
+    function convertFromArrow(r) {
+      switch (r) {
+        case "generalization": return "";
+        default: return "";
+      }
+    }
+
+    function convertToArrow(r) {
+      switch (r) {
+        case "generalization": return "Triangle";
+        case "aggregation": return "StretchedDiamond";
+        case "association": return "";
+        default: return "";
+      }
+    }
+
+    myDiagram.linkTemplate =
+      $(go.Link,
+        { routing: go.Link.Orthogonal },
+        new go.Binding("isLayoutPositioned", "relationship", convertIsTreeLink),
+        $(go.Shape),
+        $(go.Shape, { scale: 1.3, fill: "white" },
+          new go.Binding("fromArrow", "relationship", convertFromArrow)),
+        $(go.Shape, { scale: 1.3, fill: "white" },
+          new go.Binding("toArrow", "relationship", convertToArrow))
+      );
+
+      var nodedata = [
+      {
+        key: 1,
+        name: "Classname",
+        properties: [
+          
+        ],
+        methods: [
+          
+        ]
+      }];
+
+      var linkdata = [];
+
+      myDiagram.model = $(go.GraphLinksModel,
+      {
+        copiesArrays: true,
+        copiesArrayObjects: true,
+        nodeDataArray: nodedata,
+        linkDataArray: linkdata
+      });
+
+      myDiagram.findNodeForKey(1).isSelected = true;
+  }
+</script>
+</head>
+  <body onload="init()">
+    <div class="container">
+      <div class="row"> 
+        <div class="col-xs-8"> 
+          <h3>SynergUML / SynergiaSketch</h3>
+          <!-- <h3>SynergUML/SynerGRAM/SynergiaDrawer/SynergiaSketch</h3>   -->
+        </div> 
+        <div class="col-xs-4">
+          <button type="button" style="margin-top:10px" class="btn btn-info btn-md pull-right" data-toggle="modal" data-target="#modalHelp" data-tt="tooltip" title="Guia para usar a aplicação"> <span class="glyphicon glyphicon-question-sign" aria-hidden="true"></span> </button>
+        </div> 
+      </div>
+      <div class="row">
+        <div class="col-sm-12">      
+          <div id="sample">        
+            <div id="myDiagramDiv" style="border: solid 3px black; width:100%; height:600px"> </div>  
+            <div class="row" style="margin: 3em 0;">
+               <div class="col-md-6">                        
+                  <label for="">Selecionar arquivo json para carregar</label>            
+                  <div class="fileinput fileinput-new input-group" data-provides="fileinput">
+                    <div class="form-control" data-trigger="fileinput">
+                      <i class="glyphicon glyphicon-file fileinput-exists"></i> 
+                      <span class="fileinput-filename"></span>
+                    </div>
+                    <span class="input-group-addon btn btn-default btn-file">
+                      <span class="fileinput-new"><i class="glyphicon glyphicon-file"></i> Selecione...</span>
+                      <span class="fileinput-exists">Mudar</span>
+                      <input type="file" accept=".json" id="files" name="files"/>
+                    </span>
+                      <!-- <a href="#" class="input-group-addon btn btn-default fileinput-exists" data-dismiss="fileinput">Remove</a> -->
+                    <a class="input-group-addon btn btn-default fileinput-exists btn-primary" id="gerarModelo" href="!">Gerar Modelo</a>
+                  </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                  <button class="btn btn-primary pull-right" type="button" onClick="saveModel()" style="margin-top:25px;"> 
+                    <i class="glyphicon glyphicon-save"></i> Salvar diagrama em JSON
+                    </button> 
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="modalConfig" class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title">Configurações</h4>        
+          </div>            
+        <form action="">
+          <div class="modal-body form-horizontal">
+            <div id="attribute" name="attribute"> </div>
+            <ul class="nav nav-tabs">
+              <li class="active"><a data-toggle="tab" href="#basico">Campos básicos</a></li>
+              <li><a data-toggle="tab" href="#formOptions">Form Options</a></li>
+              <li><a data-toggle="tab" href="#formValidation">Form Validation</a></li>
+              <li><a data-toggle="tab" href="#dataTableConfig">Data Table Config</a></li>
+              <li><a data-toggle="tab" href="#tableView">Table View</a></li>
+            </ul>
+            <div class="tab-content">           
+              <!-- Aba campos básicos -->
+                <div id="basico" class="tab-pane fade in active">
+                  <!-- Text input-->
+                  <div class="form-group">
+                    <label class="col-md-3 control-label" for="Nome">Nome</label>  
+                    <div class="col-md-8">
+                      <input id="Nome" name="Nome" type="text" placeholder="Digite o nome do campo..." class="form-control">
+                      <!-- <span class="help-block">Escreva algo aqui</span>   -->
+                    </div>
+                  </div>
+                  <!-- Select Basic -->
+                  <div class="form-group">
+                    <label class="col-md-3 control-label" for="Tipo">Tipo</label>
+                    <div class="col-md-8">
+                      <select id="Tipo" name="Tipo" class="form-control input-md">
+                        <option selected="true" disabled="disabled">Selecione o tipo do campo</option>
+                        <option>Date</option>
+                        <option>Number</option>
+                        <option>Objeto</option>
+                        <option>String</option>
+                      </select>
+                    </div>
+                  </div>
+                  <!-- text -->
+                  <div class="form-group">
+                    <label class="col-md-3 control-label" for="Label">Label</label>  
+                    <div class="col-md-8">
+                      <input id="Label" name="Label" type="text" placeholder="Digite um label para o campo..." class="form-control">
+                      <!-- <span class="help-block">Exemplo: Nome</span>   -->
+                    </div>
+                  </div> 
+                  <div id="newContentBasico"> </div>
+                  <div class="row"> 
+                    <div class="col-md-8"> 
+                      <a href="indexForms.html" value="newContentBasico" class="btn btn-gray btn-sm" onclick='addFields(event)' data-tt="tooltip" title="Adicionar campo"> 
+                        <span class="glyphicon glyphicon-plus"></span> Adicionar
+                      </a>
+                    </div>
+                  </div>
+                  <div class="row"></div>
+                </div> <!-- Aba campos básicos -->                 
+                <!-- ABA formOptions --> 
+                <div id="formOptions" class="tab-pane fade">            
+                  <!-- Text input-->
+                  <div class="form-group">
+                    <label class="col-md-3 control-label" for="FIELD_TAG">FIELD_TAG</label>  
+                    <div class="col-md-8">
+                    <input id="FIELD_TAG" name="FIELD_TAG" type="text" placeholder="Digite a tag do campo" class="form-control">
+                    <span class="help-block">Ex.: inputH</span>  
+                    </div>
+                  </div>
+                  <!-- Text input-->
+                  <div class="form-group">
+                    <label class="col-md-3 control-label" for="FIELD_TYPE">FIELD_TYPE</label>  
+                    <div class="col-md-8">
+                    <input id="FIELD_TYPE" name="FIELD_TYPE" type="text" placeholder="Digite o tipo do campo" class="form-control">
+                    <span class="help-block">Ex.: text</span>  
+                    </div>
+                  </div>
+                  <!-- Text input-->
+                  <div class="form-group">
+                    <label class="col-md-3 control-label" for="PLACEHOLDER">PLACEHOLDER</label>  
+                    <div class="col-md-8">
+                    <input id="PLACEHOLDER" name="PLACEHOLDER" type="text" placeholder="Digite o texto descritivo do campo" class="form-control">
+                    <span class="help-block">Ex.: Digite apenas números</span>  
+                    </div>
+                  </div>
+                  <div id="newContentformOptions"></div>
+                  <div class="row"> 
+                    <div class="col-md-8"> 
+                        <a href="indexForms.html" value="newContentformOptions" class="btn btn-gray btn-sm" onclick='addFields(event)' data-tt="tooltip" title="Adicionar campo"> 
+                          <span class="glyphicon glyphicon-plus"></span> Adicionar
+                        </a>
+                      </div>
+                  </div>
+                  <div class="row"></div>
+                </div> <!-- ABA formOptions --> 
+                <!-- ABA formValidation --> 
+                <div id="formValidation" class="tab-pane fade"> 
+                  <!-- <div class="form-group"> -->
+                    <p class="titles-subForm" style=> Required </p>
+                  <!-- </div> -->
+                  <!-- Multiple Radios (inline) -->
+                  <div class="form-group">
+                    <label class="col-md-3 control-label" for="radios">Value</label>
+                    <div class="col-md-8"> 
+                      <label class="radio-inline" for="ValueTrue">
+                        <input type="radio" name="radios" id="ValueTrue" value="true">
+                        true
+                      </label> 
+                      <label class="radio-inline" for="ValueFalse">
+                        <input type="radio" name="radios" id="ValueFalse" value="false">
+                        false
+                      </label>
+                    </div>
+                  </div>
+                  <!-- Text input-->
+                  <div class="form-group">
+                    <label class="col-md-3 control-label" for="Message">Message</label>  
+                    <div class="col-md-8">
+                    <input id="Message" name="Message" type="text" placeholder="Mensagem exibida para campo obrigatório vazio" class="form-control">
+                    <span class="help-block">Ex.: O nome é obrigatório</span>  
+                    </div>
+                  </div>
+                  <div id="newContentFormValidation"></div>
+                  <div class="row"> 
+                    <div class="col-md-8"> 
+                      <a href="indexForms.html" value="newContentFormValidation" class="btn btn-gray btn-sm" onclick='addFields(event)' data-tt="tooltip" title="Adicionar campo"> 
+                        <span class="glyphicon glyphicon-plus"></span> Adicionar
+                      </a>
+                    </div>
+                  </div>
+                  <div class="row"></div>
+                </div> <!-- ABA formValidation --> 
+                <!-- ABA dataTableConfig --> 
+                <div id="dataTableConfig" class="tab-pane fade"> 
+                  <!-- Text input-->
+                  <div class="form-group">
+                    <label class="col-md-3 control-label" for="Title">Title</label>  
+                    <div class="col-md-8">
+                    <input id="Title" name="Title" type="text" placeholder="Digite o título do data table" class="form-control">
+                    <span class="help-block">Ex.: Novo_Nome</span>  
+                    </div>
+                  </div>
+                  <!-- <div class="form-group"> -->
+                    <p class="titles-subForm" style=> Link </p>
+                  <!-- </div> -->
+                  <!-- Text input-->
+                  <div class="form-group">
+                    <label class="col-md-3 control-label" for="Router">Router</label>  
+                    <div class="col-md-8">
+                    <input id="Router" name="Router" type="text" placeholder="" class="form-control">
+                    <span class="help-block">Ex.: ProjetosView</span>  
+                    </div>
+                  </div>
+                  <!-- Text input-->
+                  <div class="form-group">
+                    <label class="col-md-3 control-label" for="Field">Field</label>  
+                    <div class="col-md-8">
+                    <input id="Field" name="Field" type="text" placeholder="" class="form-control">
+                    <span class="help-block">Ex.: _id</span>  
+                    </div>
+                  </div>
+                  <div id="newContentDataTable"></div>
+                  <div class="row"> 
+                    <div class="col-md-8"> 
+                      <a href="indexForms.html" value="newContentDataTable" class="btn btn-gray btn-sm" onclick='addFields(event)' data-tt="tooltip" title="Adicionar campo"> 
+                        <span class="glyphicon glyphicon-plus"></span> Adicionar
+                      </a>
+                    </div>
+                  </div>
+                  <div class="row"></div>
+                </div> <!-- ABA dataTableConfig --> 
+                <!-- ABA dataTableConfig --> 
+                <div id="tableView" class="tab-pane fade"> 
+                  <!-- Text input-->
+                  <div class="form-group">
+                    <label class="col-md-3 control-label" for="LabelTableView">Label</label>  
+                    <div class="col-md-8">
+                    <input id="LabelTableView" name="LabelTableView" type="text" placeholder="" class="form-control">
+                    <!-- <span class="help-block">Ex.: Nome</span>   -->
+                    </div>
+                  </div>
+                  <!-- Text input-->
+                  <div class="form-group">
+                    <label class="col-md-3 control-label" for="Template">Template</label>  
+                    <div class="col-md-8">
+                    <input id="Template" name="Template" type="text" placeholder="" class="form-control">
+                    <!-- <span class="help-block">Ex.: tmpl</span>   -->
+                    </div>
+                  </div>
+                  <div id="newContentTableView"></div>
+                  <div class="row">              
+                    <div class="col-md-8"> 
+                      <a href="indexForms.html" value="newContentTableView" class="btn btn-gray btn-sm" onclick='addFields(event)' data-tt="tooltip" title="Adicionar campo"> 
+                        <span class="glyphicon glyphicon-plus"></span> Adicionar
+                      </a>
+                    </div>
+                  </div>
+                  <div class="row"></div>
+                </div> <!-- ABA dataTableConfig -->              
+            </div> <!-- tab-content -->     
+          </div>         
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+            <!--O botão salvar dá o submit para o formulário. Ao invés de chamar adicionarConfig, "dá" submit e salva dados em um json-->
+            <button type="button" class="btn btn-primary" onclick="adicionaConfig(event)">Salvar</button>
+          </div>
+        </form>
+        </div><!-- /.modal-content -->
+      </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+
+    <!-- Modal do botão guia -->
+    <div id="modalHelp" class="modal fade" tabindex="-1" role="dialog">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title" style="font:bold">Tutorial SynergUML</h4>
+            <br>
+            <p align="justify"> É possível carregar um diagrama UML a partir de um arquivo json padronizado ou desenhar um novo diagrama. Também é possível salvar o diagrama desenhado em um arquivo json. </p>
+            <p align="justify">Pode-se acrescentar classes e relacionamentos entre elas, bem como adicionar atributos e propriedades às classes. Ao selecionar uma classe, são exibidos alguns botões de menu que são usados para desenhar o diagrama. Ao passar o mouse sobre cada um deles, é exibido um tooltip informando a sua funcionalidade. </p>
+            <p align="justify">Existem botões à direita na seção de atributos e métodos para a inclusão de um novo item. Para cada atributo ou método, existe um botão de configuração. Ao criar um atributo/método, é possível renomeá-lo e configurá-lo. Ao abrir a janela de configurações, pode-se inserir os campos necessários àquele atributo e salvá-los. </p>        
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-dismiss="modal">Fechar</button>
+          </div>
+        </div><!-- /.modal-content -->
+      </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+
+    <input type="hidden" id="jsonGeral" value="[{ 'name': '', 'properties': [{}] }]">
+    <script src="windowScripts.js"></script> 
+
+  </body>
+</html>

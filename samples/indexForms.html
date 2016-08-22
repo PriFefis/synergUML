@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <link href="assetsForms/css/lib/bootstrap.min.css" rel="stylesheet">
+    <link href="assetsForms/css/lib/bootstrap-responsive.min.css" rel="stylesheet">
+    <link href="assetsForms/css/custom.css" rel="stylesheet">
+    <script data-main="assetsForms/js/main.js" src="assetsForms/js/lib/require.js"> </script>
+
+  </head>
+  <body>
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container">
+          <h5 style="color:gray">Synergia FormBuilder 
+            <button type="button" class="btn btn-info pull-right" data-toggle="modal" data-target="#modalInfo" style="font-weight: bold; font-size: 105%"> ? </button> 
+          </h5>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <div class="row clearfix">
+        <!-- Building Form. -->
+        <div class="span6">
+          <div class="clearfix">
+            <h2>Novos campos</h2>
+            <hr>
+            <div id="build">
+              <form id="target" class="form-horizontal">
+              </form>
+            </div>
+          </div>
+
+          <div class="pull-right">
+            <button type="button" class="btn btn-default" onclick="window.close()">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="saveCustomForm">Salvar</button>
+          </div>
+
+        </div>
+        <!-- / Building Form. -->
+
+        <!-- Components -->
+        <div class="span6">
+          <h2>Drag-Drop componentes</h2>
+          <hr>
+          <div class="tabbable">
+            <ul class="nav nav-tabs" id="formtabs">
+              <!-- Tab nav -->
+            </ul>
+            <form class="form-horizontal" id="components">
+              <fieldset>
+                <div class="tab-content">
+                  <!-- Tabs of snippets go here -->
+                </div>
+              </fieldset>
+            </form>
+          </div>
+        </div>
+        <!-- / Components -->
+
+      </div>
+      <div class="row clearfix"> </div>
+
+    </div> <!-- /container -->
+
+    <!-- Modal? form builder -->
+    <div class="modal fade" id="modalInfo" role="dialog">
+      <div class="modal-dialog modal-sm">    
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <h4 class="modal-title">Synergia FormBuilder Tutorial</h4>
+          </div>
+          <div class="modal-body">
+            <p>Escolha a categoria de campo que deseja adicionar nas abas à direita. É possível escolher dentre as seguintes categorias: input, radio, checkbox, select e button. Selecione um tipo para o campo, clique nele e arraste-o para o formulário à esquerda da tela.</p>
+            <p>Pronto! Ao clicar em Salvar, todos os campos selecionados serão adicionados ao formulário inicial.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Fechar</button>
+          </div>
+        </div>        
+      </div>
+    </div>
+       
+    <script src="windowScripts.js"></script> 
+  </body>
+</html>

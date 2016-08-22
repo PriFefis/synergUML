@@ -1,0 +1,25 @@
+<script>
+
+function abrir(programa,janela)
+
+{
+
+   if(janela=="") janela = "janela";
+
+   window.open(programa,janela,'height=350,width=640');
+
+}
+
+</script>
+
+<body bgcolor=silver>
+
+<form name=dados>
+
+   <br>Cod. Cliente:<br>
+
+   <input name=’codigo’>
+
+   <input type=button value=’pesquisar’ onClick=javascript:abrir('popup.htm');>
+
+</form>
