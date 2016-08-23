@@ -1,6 +1,9 @@
-	var oGrandeJson = []; var objHandled = [];	var myJson = [];
-	oGrandeJson['name'];
-	oGrandeJson['properties'] = [];
+	var oGrandeJson = {}; var objHandled = [];	var myJson = []; 
+	// oGrandeJson['name'] = {};
+	// oGrandeJson['properties'] = [];
+
+	var oGrandeArr = [];
+	// oGrandeObj{'name', 'properties'};
 
  	//botão salvar da modal configurações atributo
 	function adicionaConfig(e) {
@@ -15,13 +18,19 @@
 	    var arrayModalConfig = [modalAbaBasico, modalAbaFormOpt, modalAbaFormValid, modalAbaDataTableConfig, modalAbaTableView];
 		var modalTitle = $('#modalConfig .modal-title').html().split(": ");
 		var collection = modalTitle[0];
-		var nameAttr = modalTitle[1];
-		// console.log("Atributo: " + nameAttr);
+		var attribute = modalTitle[1];
+		// console.log("Atributo: " + attribute);
 		// oGrandeJson = {'name': collection, 'properties': []};
-		oGrandeJson['name'] = collection;
+		if (typeof oGrandeJson[collection] == 'undefined')
+			oGrandeJson[collection] = {};
+		
+		if (typeof oGrandeJson[collection]['properties'] == 'undefined')
+			oGrandeJson[collection]['properties'] = {};
+		
+		oGrandeJson[collection]['name'] = collection;
 		// oGrandeJson['properties'] = {};
-		// oGrandeJson.properties[nameAttr] = {};
-		myJson = oGrandeJson['properties'][nameAttr] = {};
+		// oGrandeJson.properties[attribute] = {};
+		myJson = oGrandeJson[collection]['properties'][attribute] = {};
 
 		for(let index in arrayModalConfig) {
 			var size = arrayModalConfig[index].length;  
@@ -89,30 +98,22 @@
 				}
 			}
 			// oGrandeJson.push(objHandled);
-		} 
-		// arrayX.push(oGrandeJson);
-		/********************** PEGAR OS DADOS DO DIAGRAMA ***********************
-		 var modelAsText2 = myDiagram.model.toJson();
-      	 console.log(modelAsText2);
-      	************************************************** **********************/
-  //      	var bla = JSON.stringify(oGrandeJson); 
-		// var blaJSON = JSON.parse(bla); // transforma a string em objeto
-  //     	console.log($("#jsonGeral").val());       	
-  //      	$("#jsonGeral").val(blaJSON); 
-  //      	var conteudo = $("#jsonGeral").text();
-  		var testArray = JSON.parse(JSON.stringify(oGrandeJson));
-  		
-  		// test.push(testArray);
-  		// console.log(test);
+		} 		  	
+ 
   		console.log(oGrandeJson);
   		var bla = JSON.stringify(oGrandeJson);
        	console.log(bla);
 
+		oGrandeArr.push(oGrandeJson);
+		console.log(oGrandeArr);
 
-       	// printObject(arrayX[0]);
-
-       	//Fechar (esconder) modal.
+		//Fechar (esconder) modal.
        	$('#modalConfig').modal('hide'); 
+
+       	/************* GET DIAGRAM DATA ************
+		 var model = myDiagram.model.toJson();
+      	 console.log(model);
+      	 */
   	}
 
   	//Ao clicar no botão Salvar da janela do form builder:
